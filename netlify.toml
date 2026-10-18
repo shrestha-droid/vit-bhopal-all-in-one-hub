@@ -1,0 +1,11 @@
+# Frontend-only deploy. See DEPLOY.md if this project has a server/ directory.
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Single-page app: every path must serve index.html, or a refresh on a
+# sub-route 404s.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

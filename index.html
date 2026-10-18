@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VIT Bhopal Connect</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%23ff4d1a%22%2F%3E%3Ctext%20x%3D%2232%22%20y%3D%2233%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22central%22%20font-family%3D%22system-ui%2C-apple-system%2CSegoe%20UI%2Csans-serif%22%20font-size%3D%2230%22%20font-weight%3D%22700%22%20fill%3D%22%23ffffff%22%3EVB%3C%2Ftext%3E%3C%2Fsvg%3E" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // NEW: confirmed real gap -- errors happening inside this page
+      // after it loads (a bad import, a runtime exception) were never
+      // detected at all, meaning self-healing had zero chance to ever
+      // see or fix them. Registered before the app's own module below,
+      // so it catches even module-load-time errors, not just ones
+      // after React mounts.
+      window.addEventListener('error', function(e) {
+        try {
+          window.parent.postMessage({ type: 'branch-hq-runtime-error', message: (e.error && e.error.stack) || e.message || String(e) }, '*')
+        } catch (err) {}
+      })
+      window.addEventListener('unhandledrejection', function(e) {
+        try {
+          window.parent.postMessage({ type: 'branch-hq-runtime-error', message: 'Unhandled promise rejection: ' + ((e.reason && e.reason.stack) || e.reason || String(e)) }, '*')
+        } catch (err) {}
+      });
+      // The tab title is the BUSINESS's name, and that name lives in the
+      // database (the owner can change it), not in the code -- so it cannot
+      // be baked in here at build time. MEASURED, reported from a real
+      // staff portal: every generated site showed "App" in the tab, because
+      // the frontend correctly reads its name from /api/settings at runtime
+      // and therefore has no literal name anywhere for the build step to
+      // find. Reading it back here is the only place that is always right,
+      // and it follows a rename the moment the owner saves one.
+      (function() {
+        try {
+          fetch('/api/settings?for=title').then(function(r) {
+            return r.ok ? r.json() : null
+          }).then(function(s) {
+            var name = s && typeof s.name === 'string' ? s.name.trim() : ''
+            if (name) document.title = name
+          }).catch(function() {})
+        } catch (err) {}
+      })();
+      // NEW: click-to-select element inspector. Listens for the parent
+      // (Electron renderer) to toggle inspect mode via postMessage, then
+      // on the next click, captures identifying info about whatever was
+      // clicked and posts it back -- tag, a short ancestor-path
+      // description, visible text, and a few key computed style values
+      // (color, background, font size/weight) so a follow-up request has
+      // concrete current values to reference, not just "the label".
+      //
+      // This deliberately does NOT attempt to map the clicked DOM node
+      // back to an exact source file and line number -- that needs a
+      // build-time source-map pipeline this project doesn't have. The
+      // description here is meant to be read by the model, which matches
+      // it against the actual source code it's given separately (see the
+      // direct-chat project-context fix) -- descriptive text a model can
+      // pattern-match against, not a selector meant for programmatic re-use.
+      //
+      // Runs on the document in the CAPTURE phase specifically, which is
+      // what lets it intercept a click before React's own bubble-phase
+      // handlers ever see it -- necessary so that clicking "Sign Out"
+      // while inspecting shows information about the button instead of
+      // actually signing out.
+      (function() {
+        var inspecting = false
+        var lastHovered = null
+        var lastOutline = ''
+
+        function clearHighlight() {
+          if (lastHovered) {
+            lastHovered.style.outline = lastOutline
+            lastHovered = null
+          }
+        }
+
+        function handleMouseOver(e) {
+          if (!inspecting) return
+          clearHighlight()
+          lastHovered = e.target
+          lastOutline = lastHovered.style.outline
+          lastHovered.style.outline = '2px solid #3b82f6'
+        }
+
+        function describeElement(el) {
+          var parts = []
+          var node = el
+          var depth = 0
+          while (node && node !== document.body && depth < 3) {
+            var part = node.tagName.toLowerCase()
+            if (node.id) part += '#' + node.id
+            if (node.className && typeof node.className === 'string') {
+              var classes = node.className.trim().split(/\s+/).filter(Boolean).slice(0, 3)
+              if (classes.length) part += '.' + classes.join('.')
+            }
+            parts.unshift(part)
+            node = node.parentElement
+            depth++
+          }
+          var text = (el.innerText || el.textContent || '').trim().slice(0, 80)
+          var style = window.getComputedStyle(el)
+          return {
+            selectorPath: parts.join(' > '),
+            tagName: el.tagName.toLowerCase(),
+            text: text,
+            color: style.color,
+            backgroundColor: style.backgroundColor,
+            fontSize: style.fontSize,
+            fontWeight: style.fontWeight
+          }
+        }
+
+        function handleClick(e) {
+          if (!inspecting) return
+          e.preventDefault()
+          e.stopPropagation()
+          var info = describeElement(e.target)
+          try {
+            window.parent.postMessage({ type: 'branch-hq-element-selected', element: info }, '*')
+          } catch (err) {}
+        }
+
+        window.addEventListener('message', function(e) {
+          var data = e.data
+          if (!data || data.type !== 'branch-hq-inspect-mode') return
+          inspecting = !!data.enabled
+          if (!inspecting) clearHighlight()
+          document.body.style.cursor = inspecting ? 'crosshair' : ''
+        })
+
+        document.addEventListener('mouseover', handleMouseOver, true)
+        document.addEventListener('click', handleClick, true)
+      })();
+
+    </script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

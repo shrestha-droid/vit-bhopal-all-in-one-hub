@@ -1,0 +1,27 @@
+/* branch-hq-direction: street-chrome -- Street Chrome. Provided by Branch HQ; the colours are Tailwind classes (bg-canvas, text-ink, bg-accent...). */
+@import url('https://fonts.googleapis.com/css2?family=Archivo+Black:wght@400&family=Geist:wght@400;500;600&display=swap');
+
+:root {
+  --canvas: 10 10 10;
+  --surface: 21 21 21;
+  --ink: 241 241 241;
+  --muted: 140 140 140;
+  --line: 38 38 38;
+  --accent: 255 77 26;
+  --on-accent: 10 10 10;
+  --font-display: 'Archivo Black', ui-serif, Georgia, serif;
+  --font-body: 'Geist', ui-sans-serif, system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+html { background: rgb(var(--canvas)); }
+body {
+  background: rgb(var(--canvas));
+  color: rgb(var(--ink));
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.02em; }
+::selection { background: rgb(var(--accent)); color: rgb(var(--on-accent)); }
+:focus-visible { outline: 2px solid rgb(var(--accent)); outline-offset: 3px; }
